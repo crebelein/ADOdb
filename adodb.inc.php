@@ -2073,9 +2073,12 @@ if (!defined('_ADODB_LAYER')) {
 						$em = 'Cache write error';
 						$en = -32000;
 
+						/*
 						if ($fn = $this->raiseErrorFn) {
 							$fn($this->databaseType,'CacheExecute', $en, $em, $md5file,$sql,$this);
 						}
+						*/
+						trigger_error("CacheExecute: $em ($md5file, $sql)");
 					} else {
 						$em = 'Cache file locked warning';
 						$en = -32001;
