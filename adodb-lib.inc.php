@@ -135,6 +135,9 @@ function _array_change_key_case($an_array)
 
 function _adodb_replace(&$zthis, $table, $fieldArray, $keyCol, $autoQuote, $has_autoinc)
 {
+		// Add Quote around table name to support use of spaces / reserve keywords
+		$table=sprintf('%s%s%s', $zthis->nameQuote,$table,$zthis->nameQuote); 
+	
 		if (count($fieldArray) == 0) return 0;
 		$first = true;
 		$uSet = '';
@@ -152,18 +155,22 @@ function _adodb_replace(&$zthis, $table, $fieldArray, $keyCol, $autoQuote, $has_
 			}
 			if (in_array($k,$keyCol)) continue; // skip UPDATE if is key
 
+			// Add Quote around column name to support use of spaces / reserve keywords
 			if ($first) {
 				$first = false;
-				$uSet = "$k=$v";
+				$uSet = sprintf('%s%s%s=%s', $zthis->nameQuote,$k,$zthis->nameQuote,$v);
 			} else
-				$uSet .= ",$k=$v";
+				$uSet .= sprintf(',%s%s%s=%s',$zthis->nameQuote,$k,$zthis->nameQuote,$v);
 		}
 
+		// Add Quote around column name in where clause
 		$where = false;
 		foreach ($keyCol as $v) {
 			if (isset($fieldArray[$v])) {
-				if ($where) $where .= ' and '.$v.'='.$fieldArray[$v];
-				else $where = $v.'='.$fieldArray[$v];
+				if ($where) 
+					$where .= sprintf(' and %s%s%s=%s ', $zthis->nameQuote,$v,$zthis->nameQuote,$fieldArray[$v]);
+				else 
+					$where = sprintf('%s%s%s=%s', $zthis->nameQuote,$v,$zthis->nameQuote,$fieldArray[$v]);
 			}
 		}
 
@@ -197,13 +204,13 @@ function _adodb_replace(&$zthis, $table, $fieldArray, $keyCol, $autoQuote, $has_
 		$first = true;
 		foreach($fieldArray as $k => $v) {
 			if ($has_autoinc && in_array($k,$keyCol)) continue; // skip autoinc col
-
+			// Add Quote around Column Name
 			if ($first) {
 				$first = false;
-				$iCols = "$k";
+				$iCols = sprintf('%s%s%s',$zthis->nameQuote,$k,$zthis->nameQuote);
 				$iVals = "$v";
 			} else {
-				$iCols .= ",$k";
+				$iCols .= sprintf(',%s%s%s',$zthis->nameQuote,$k,$zthis->nameQuote);
 				$iVals .= ",$v";
 			}
 		}
@@ -416,14 +423,16 @@ function _adodb_getcount(&$zthis, $sql,$inputarr=false,$secs2cache=0)
 			} else
 				$rewritesql = "SELECT COUNT(*) FROM (".$rewritesql.")";
 
-		} else if (strncmp($zthis->databaseType,'postgres',8) == 0
-			|| strncmp($zthis->databaseType,'mysql',5) == 0
-			|| strncmp($zthis->databaseType,'mssql',5) == 0
-		) {
-			$rewritesql = "SELECT COUNT(*) FROM ($rewritesql) _ADODB_ALIAS_";
-		} else {
-			$rewritesql = "SELECT COUNT(*) FROM ($rewritesql)";
-		}
+        } else if (strncmp($zthis->databaseType,'postgres',8) == 0
+            || strncmp($zthis->databaseType,'mysql',5) == 0
+	    || strncmp($zthis->databaseType,'mssql',5) == 0
+            || strncmp($zthis->dsnType,'sqlsrv',5) == 0
+            || strncmp($zthis->dsnType,'mssql',5) == 0
+        ){
+		    $rewritesql = "SELECT COUNT(*) FROM ($rewritesql) _ADODB_ALIAS_";
+        } else {
+            $rewritesql = "SELECT COUNT(*) FROM ($rewritesql)";
+        }
 	} else {
 		// now replace SELECT ... FROM with SELECT COUNT(*) FROM
 		if ( strpos($sql, '_ADODB_COUNT') !== FALSE ) {
@@ -729,6 +738,20 @@ function _adodb_getupdatesql(&$zthis,&$rs, $arrFields,$forceUpdate=false,$magicq
                                 $setFields .= _adodb_column_sql($zthis, 'U', $type, $upperfname, $fnameq,$arrFields, $magicq);
                             }
                         break;
+		        case ADODB_FORCE_NULL_AND_ZERO:
+					
+			    switch ($type)
+			    {
+				case 'N':
+				case 'I':
+				case 'L':
+				$setFields .= $field->name . ' = 0, ';
+				break;
+				default:
+				$setFields .= $field->name . ' = null, ';
+				break;
+			    }
+			    break;
                     }
                 //********************************************************//
                 } else {
@@ -762,7 +785,7 @@ function _adodb_getupdatesql(&$zthis,&$rs, $arrFields,$forceUpdate=false,$magicq
 				if (preg_match('/\s(ORDER\s.*)/is', $whereClause[1], $discard));
 				else if (preg_match('/\s(LIMIT\s.*)/is', $whereClause[1], $discard));
 				else if (preg_match('/\s(FOR UPDATE.*)/is', $whereClause[1], $discard));
-				else preg_match('/\s.*(\) WHERE .*)/is', $whereClause[1], $discard); # see http://sourceforge.net/tracker/index.php?func=detail&aid=1379638&group_id=42718&atid=433976
+				else preg_match('/\s.*(\) WHERE .*)/is', $whereClause[1], $discard); # see https://sourceforge.net/p/adodb/bugs/37/
 			} else
 				$whereClause = array(false,false);
 

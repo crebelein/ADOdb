@@ -8,7 +8,7 @@
   the BSD license will take precedence.
 Set tabs to 4 for best viewing.
 
-  Latest version is available at http://adodb.sourceforge.net
+  Latest version is available at http://adodb.org/
 
   Native mssql driver. Requires mssql client. Works on Windows.
   To configure for Unix, see
@@ -814,7 +814,16 @@ order by constraint_name, referenced_table_name, keyno";
 						$decl .= "@P$i NVARCHAR($len)";
 					}
 
-					$params .= "@P$i=N". (strncmp($v,"'",1)==0? $v : $this->qstr($v));
+					if(substr($v,0,1) == "'" && substr($v,-1,1) == "'")
+						/*
+						* String is already fully quoted
+						*/
+						$inputVar = $v;
+					else
+						$inputVar = $db->this($v);
+
+					$params .= "@P$i=N" . $inputVar;
+					
 				} else if (is_integer($v)) {
 					$decl .= "@P$i INT";
 					$params .= "@P$i=".$v;
