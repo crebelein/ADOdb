@@ -2162,6 +2162,7 @@ if (!defined('_ADODB_LAYER')) {
 						$en = -32000;
 
 						/*
+						// crebelein: fail soft on cache write error
 						if ($fn = $this->raiseErrorFn) {
 							$fn($this->databaseType,'CacheExecute', $en, $em, $md5file,$sql,$this);
 						}
